@@ -1,0 +1,488 @@
+1. A* Algo
+
+def aStarAlgo(start_node, stop_node):
+    open_set = set(start_node)
+    closed_set = set()
+    g = {} 
+    parents = {}
+    g[start_node] = 0
+    parents[start_node] = start_node 
+
+    while len(open_set) > 0 :
+        n = None
+        for v in open_set: 
+            if n == None or g[v] + heuristic(v) < g[n] + heuristic(n):
+                n = v
+        if n == stop_node or Graph_nodes[n] == None:
+            pass
+        else:
+            for (m, weight) in get_neighbors(n):        
+                if m not in open_set and m not in closed_set:
+                    open_set.add(m)      
+                    parents[m] = n       
+                    g[m] = g[n] + weight 
+                else:
+                    if g[m] > g[n] + weight:
+                        g[m] = g[n] + weight
+                        parents[m] = n
+                        if m in closed_set:
+                            closed_set.remove(m)
+                            open_set.add(m)
+
+        if n == None:
+            print('Path does not exist!')
+            return None
+        if n == stop_node:
+            path = []
+            while parents[n] != n:
+                path.append(n)
+                n = parents[n]
+            path.append(start_node)
+            path.reverse()
+            print('Path found: {}'.format(path))
+            return path
+        open_set.remove(n)
+        closed_set.add(n) 
+
+    print('Path does not exist!')
+    return None
+
+def get_neighbors(v):
+    if v in Graph_nodes:
+        return Graph_nodes[v]
+    else:
+        return None
+ 
+def heuristic(n):
+    H_dist = {
+        'S': 2,
+        'A': 5,
+        'B': 0,
+        'C': 4,
+        'D': 0
+    }
+    return H_dist[n]
+    
+Graph_nodes = {
+    'S': [('A', 1), ('B', 4)],
+    'A': [('S', 1), ('B', 1),('C',5),('D',12)],
+    'B': [('S', 4), ('A', 1),('C',2)],
+    'C': [('A', 5), ('B', 2),('D',3)],
+    'D': [('A', 12), ('C', 3)]
+}
+aStarAlgo('S', 'D')
+---------------------------------------------------------------------------------------------------------------------
+2. AO* Algorithm
+
+
+def Cost(H, condition, weight = 1):
+	cost = {}
+	if 'AND' in condition:
+		AND_nodes = condition['AND']
+		Path_A = ' AND '.join(AND_nodes)
+		PathA = sum(H[node]+weight for node in AND_nodes)
+		cost[Path_A] = PathA
+
+	if 'OR' in condition:
+		OR_nodes = condition['OR']
+		Path_B =' OR '.join(OR_nodes)
+		PathB = min(H[node]+weight for node in OR_nodes)
+		cost[Path_B] = PathB
+	return cost
+
+
+def update_cost(H, Conditions, weight=1):
+	Main_nodes = list(Conditions.keys())
+	Main_nodes.reverse()
+	least_cost= {}
+	for key in Main_nodes:
+		condition = Conditions[key]
+		print(key,':', Conditions[key],'>>>', Cost(H, condition, weight))
+		c = Cost(H, condition, weight) 
+		H[key] = min(c.values())
+		least_cost[key] = Cost(H, condition, weight)		 
+	return least_cost
+
+
+def shortest_path(Start,Updated_cost, H):
+	Path = Start
+	if Start in Updated_cost.keys():
+		Min_cost = min(Updated_cost[Start].values())
+		key = list(Updated_cost[Start].keys())
+		values = list(Updated_cost[Start].values())
+		Index = values.index(Min_cost)
+		
+		
+		Next = key[Index].split()
+		
+		if len(Next) == 1:
+
+			Start =Next[0]
+			Path += '<--' +shortest_path(Start, Updated_cost, H)
+		
+		else:
+			Path +='<--('+key[Index]+') '
+
+			Start = Next[0]
+			Path += '[' +shortest_path(Start, Updated_cost, H) + ' + '
+
+			Start = Next[-1]
+			Path += shortest_path(Start, Updated_cost, H) + ']'
+
+	return Path
+
+H = {'A': -1, 'B': 5, 'C': 2, 'D': 4, 'E': 7, 'F': 9, 'G': 3, 'H': 0, 'I':0, 'J':0}
+
+Conditions = {
+'A': {'OR': ['B'], 'AND': ['C', 'D']},
+'B': {'OR': ['E', 'F']},
+'C': {'OR': ['G'], 'AND': ['H', 'I']},
+'D': {'OR': ['J']}
+}
+weight = 1
+print('Updated Cost :')
+Updated_cost = update_cost(H, Conditions, weight=1)
+print('*'*75)
+print('Shortest Path :\n',shortest_path('A', Updated_cost,H))
+---------------------------------------------------------------------------------------------------------------------
+3. Candidate Elimination
+
+import csv
+with open("trainingexamples.csv") as f:
+    csv_file = csv.reader(f)
+    data = list(csv_file)
+    specific = data[1][:-1]
+    general = [['?' for i in range(len(specific))] for j in range(len(specific))]
+    for i in data:
+        if i[-1] == "Yes":
+            for j in range(len(specific)):
+                if i[j] != specific[j]:
+                    specific[j] = "?"
+                    general[j][j] = "?"
+
+        elif i[-1] == "No":
+            for j in range(len(specific)):
+                if i[j] != specific[j]:
+                    general[j][j] = specific[j]
+                else:
+                    general[j][j] = "?"
+
+        print("\nStep " + str(data.index(i)+1) + " of Candidate Elimination Algorithm")
+        print(specific)
+        print(general)
+
+    gh = [] # gh = general Hypothesis
+    for i in general:
+        for j in i:
+            if j != '?':
+                gh.append(i)
+                break
+    print("\nFinal Specific hypothesis:\n", specific)
+    print("\nFinal General hypothesis:\n", gh)
+-----------------------------------------------------------------------------------------------------------------------
+4. ID3 algo
+
+import pandas as pd
+import math
+
+def base_entropy(dataset):
+    p = 0
+    n = 0
+    target = dataset.iloc[:, -1]
+    targets = list(set(target))
+    for i in target:
+        if i == targets[0]:
+            p = p + 1
+        else:
+            n = n + 1
+    if p == 0 or n == 0:
+        return 0
+    elif p == n:
+        return 1
+    else:
+        entropy = 0 - (
+            ((p / (p + n)) * (math.log2(p / (p + n))) + (n / (p + n)) * (math.log2(n/ (p + n)))))
+        return entropy
+
+def entropy(dataset, feature, attribute):
+    p = 0
+    n = 0
+    target = dataset.iloc[:, -1]
+    targets = list(set(target))
+    for i, j in zip(feature, target):
+        if i == attribute and j == targets[0]:
+            p = p + 1
+        elif i == attribute and j == targets[1]:
+            n = n + 1
+        if p == 0 or n == 0:
+            return 0
+        elif p == n:
+            return 1
+        else:
+            entropy = 0 - (
+                ((p / (p + n)) * (math.log2(p / (p + n))) + (n / (p + n)) * (math.log2(n/ (p + n)))))
+            return entropy
+
+def counter(target, attribute, i):
+    p = 0
+    n = 0
+    targets = list(set(target))
+    for j, k in zip(target, attribute):
+        if j == targets[0] and k == i:
+            p = p + 1
+        elif j == targets[1] and k == i:
+            n = n + 1
+    return p, n
+
+def Information_Gain(dataset, feature):
+    Distinct = list(set(feature))
+    Info_Gain = 0
+    for i in Distinct:
+        Info_Gain = Info_Gain + feature.count(i) / len(feature) * entropy(dataset,feature, i)
+        Info_Gain = base_entropy(dataset) - Info_Gain
+    return Info_Gain
+
+def generate_childs(dataset, attribute_index):
+    distinct = list(dataset.iloc[:, attribute_index])
+    childs = dict()
+    for i in distinct:
+        childs[i] = counter(dataset.iloc[:, -1], dataset.iloc[:, attribute_index], i)
+    return childs
+
+def modify_data_set(dataset,index, feature, impurity):
+    size = len(dataset)
+    subdata = dataset[dataset[feature] == impurity]
+    del (subdata[subdata.columns[index]])
+    return subdata
+
+def greatest_information_gain(dataset):
+    max = -1
+    attribute_index = 0
+    size = len(dataset.columns) - 1
+    for i in range(0, size):
+        feature = list(dataset.iloc[:, i])
+        i_g = Information_Gain(dataset, feature)
+        if max < i_g:
+            max = i_g
+            attribute_index = i
+    return attribute_index
+
+def construct_tree(dataset, tree):
+    target = dataset.iloc[:, -1]
+    impure_childs = []
+    attribute_index = greatest_information_gain(dataset)
+    childs = generate_childs(dataset, attribute_index)
+    tree[dataset.columns[attribute_index]] = childs
+    targets = list(set(dataset.iloc[:, -1]))
+    for k, v in childs.items():
+        if v[0] == 0:
+            tree[k] = targets[1]
+        elif v[1] == 0:
+            tree[k] = targets[0]
+        elif v[0] != 0 or v[1] != 0:
+            impure_childs.append(k)
+    for i in impure_childs:
+        sub = modify_data_set(dataset,attribute_index,
+        dataset.columns[attribute_index], i)
+        tree = construct_tree(sub, tree)
+    return tree
+
+def main():
+    df = pd.read_csv("playtennis.csv")
+    tree = dict()
+    result = construct_tree(df, tree)
+    for key, value in result.items():
+        print(key, " => ", value)
+
+if __name__ == "__main__":
+    main()
+-----------------------------------------------------------------------------------------------------------------------
+5. Back propogation algo
+
+import numpy as np
+X = np.array(([2, 9], [1, 5], [3, 6]), dtype=float)
+y = np.array(([92], [86], [89]), dtype=float)
+X = X/np.amax(X,axis=0) 
+y = y/100
+
+def sigmoid (x):
+    return 1/(1 + np.exp(-x))
+
+def derivatives_sigmoid(x):
+    return x * (1 - x)
+
+epoch=5000               
+lr=0.1                   
+inputlayer_neurons = 2  
+hiddenlayer_neurons = 3  
+output_neurons = 1      
+
+wh=np.random.uniform(size=(inputlayer_neurons,hiddenlayer_neurons))
+bh=np.random.uniform(size=(1,hiddenlayer_neurons))
+wout=np.random.uniform(size=(hiddenlayer_neurons,output_neurons))
+bout=np.random.uniform(size=(1,output_neurons))
+
+for i in range(epoch):
+    hinp1=np.dot(X,wh)
+    hinp=hinp1 + bh
+    hlayer_act = sigmoid(hinp)
+    outinp1=np.dot(hlayer_act,wout)
+    outinp= outinp1+ bout
+    output = sigmoid(outinp)
+
+    EO = y-output
+    outgrad = derivatives_sigmoid(output)
+    d_output = EO* outgrad
+    EH = d_output.dot(wout.T)
+
+    hiddengrad = derivatives_sigmoid(hlayer_act)
+    d_hiddenlayer = EH * hiddengrad
+
+    wout += hlayer_act.T.dot(d_output) *lr
+    wh += X.T.dot(d_hiddenlayer) *lr
+    
+    
+print("Input: \n" + str(X))
+print("Actual Output: \n" + str(y))
+print("Predicted Output: \n" ,output)
+----------------------------------------------------------------------------------------------------------------------
+6. Naive Bayesian
+
+import pandas as pd
+from sklearn import tree
+from sklearn.preprocessing import LabelEncoder
+from sklearn.naive_bayes import GaussianNB
+
+data = pd.read_csv('tennisdata.csv')
+print("The first 5 Values of data is :\n", data.head())
+
+X = data.iloc[:, :-1]
+print("\nThe First 5 values of the train data is\n", X.head())
+
+y = data.iloc[:, -1]
+print("\nThe First 5 values of train output is\n", y.head())
+
+le_outlook = LabelEncoder()
+X.Outlook = le_outlook.fit_transform(X.Outlook)
+
+le_Temperature = LabelEncoder()
+X.Temperature = le_Temperature.fit_transform(X.Temperature)
+
+le_Humidity = LabelEncoder()
+X.Humidity = le_Humidity.fit_transform(X.Humidity)
+
+le_Windy = LabelEncoder()
+X.Windy = le_Windy.fit_transform(X.Windy)
+
+print("\nNow the Train output is\n", X.head())
+
+le_PlayTennis = LabelEncoder()
+y = le_PlayTennis.fit_transform(y)
+print("\nNow the Train output is\n",y)
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X,y, test_size = 0.20)
+
+classifier = GaussianNB()
+classifier.fit(X_train, y_train)
+
+from sklearn.metrics import accuracy_score
+print("Accuracy is:", accuracy_score(classifier.predict(X_test), y_test))
+----------------------------------------------------------------------------------------------------------------------
+7. EM Algorithm
+
+import matplotlib.pyplot as plt 
+from sklearn import datasets 
+from sklearn.cluster import KMeans 
+import pandas as pd
+import numpy as np
+
+iris = datasets.load_iris()
+X = pd.DataFrame(iris.data)
+X.columns = ['Sepal_Length','Sepal_Width','Petal_Length','Petal_Width'] 
+y = pd.DataFrame(iris.target)
+y.columns = ['Targets']
+
+model = KMeans(n_clusters=3)
+model.fit(X) 
+
+plt.figure(figsize=(14,7))
+colormap = np.array(['red', 'lime', 'black'])
+
+plt.subplot(1, 3, 1)
+plt.scatter(X.Petal_Length, X.Petal_Width, c=colormap[y.Targets], s=40) 
+plt.title('Real Clusters')
+plt.xlabel('Petal Length') 
+plt.ylabel('Petal Width')
+
+plt.subplot(1, 3, 2)
+plt.scatter(X.Petal_Length, X.Petal_Width, c=colormap[model.labels_], s=40) 
+plt.title('K-Means Clustering')
+plt.xlabel('Petal Length') 
+plt.ylabel('Petal Width')
+
+from sklearn import preprocessing
+
+scaler = preprocessing.StandardScaler() 
+scaler.fit(X)
+xsa = scaler.transform(X)
+xs = pd.DataFrame(xsa, columns = X.columns)
+from sklearn.mixture import GaussianMixture 
+gmm = GaussianMixture(n_components=40) 
+gmm.fit(xs)
+plt.subplot(1, 3, 3)
+plt.scatter(X.Petal_Length, X.Petal_Width, c=colormap[0], s=40) 
+plt.title('GMM Clustering')
+plt.xlabel('Petal Length') 
+plt.ylabel('Petal Width')
+
+print('Observation: The GMM using EM algorithm based clustering matched the true labels more closely than the Kmeans.')
+----------------------------------------------------------------------------------------------------------------------
+8. KNN algo
+
+from sklearn.model_selection import train_test_split 
+from sklearn.neighbors import KNeighborsClassifier 
+from sklearn import datasets
+iris=datasets.load_iris() 
+print("Iris Data set loaded...")
+x_train, x_test, y_train, y_test = train_test_split(iris.data,iris.target,test_size=0.1)
+
+for i in range(len(iris.target_names)):
+    print("Label", i , "-",str(iris.target_names[i]))
+classifier = KNeighborsClassifier(n_neighbors=2)
+classifier.fit(x_train, y_train)
+y_pred=classifier.predict(x_test)
+print("Results of Classification using K-nn with K=1 ") 
+for r in range(0,len(x_test)):
+    print(" Sample:", str(x_test[r]), " Actual-label:", str(y_test[r])," Predicted-label:", str(y_pred[r]))
+
+    print("Classification Accuracy :" , classifier.score(x_test,y_test))
+-----------------------------------------------------------------------------------------------------------------------
+9. Non-parametric Locally Weighted Regression Algo
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def local_regression(x0, X, Y, tau):
+    x0 = [1, x0]   
+    X = [[1, i] for i in X]
+    X = np.asarray(X)
+    xw = (X.T) * np.exp(np.sum((X - x0) ** 2, axis=1) / (-2 * tau))
+    beta = np.linalg.pinv(xw @ X) @ xw @ Y @ x0  
+    return beta    
+
+def draw(tau):
+    prediction = [local_regression(x0, X, Y, tau) for x0 in domain]
+    plt.plot(X, Y, 'o', color='black')
+    plt.plot(domain, prediction, color='red')
+    plt.show()
+
+X = np.linspace(-3, 3, num=1000)
+domain = X
+Y = np.log(np.abs(X ** 2 - 1) + .5)
+
+draw(10)
+draw(0.1)
+draw(0.01)
+draw(0.001)
+-----------------------------------------------------------------------------------------------------------------------
